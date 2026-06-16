@@ -36,7 +36,7 @@ cd sec-edgar-collector
 
 # Run the parser
 python collector.py
-
+```
 (Output Example optimized for LLM Context Windows)
 
 # JSON
