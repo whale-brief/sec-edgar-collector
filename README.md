@@ -54,6 +54,7 @@ sec-edgar-collector/
 ├── README.md
 └── src/
     ├── __init__.py
+    ├── ai_analyzer.py    # analyze logic with AI
     ├── collector.py      # SEC collection & parsing logic
     └── db_manager.py     # Database loading layer
 ```
