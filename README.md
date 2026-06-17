@@ -45,6 +45,9 @@ By removing unnecessary HTML/XML structures and exposing normalized JSON schemas
 sec-edgar-collector/
 ├── .env                  # Local environment variables (not committed)
 ├── .env.example          # Environment variable template
+├── .github/
+│   └── workflows/
+│       └── etl_pipeline.yml
 ├── .gitignore
 ├── requirements.txt
 ├── main.py               # Pipeline orchestrator

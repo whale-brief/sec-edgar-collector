@@ -1,0 +1,36 @@
+name: Whale-Brief ETL Pipeline
+
+on:
+  schedule:
+    # 매일 평일(월~금) UTC 01:00 (한국 시간 오전 10시 / 미 동부 오후 8시)
+    # SEC 공시와 FINRA 일별 데이터가 모두 적재된 안정적인 시간대에 실행
+    - cron: '0 1 * * 1-5'
+  
+  # 수동 실행 버튼 (테스트용)
+  workflow_dispatch:
+
+jobs:
+  run-etl:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip' # 패키지 설치 속도 최적화
+
+      - name: 3. Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 4. Execute ETL Pipeline (Extract -> Transform -> Load)
+        env:
+          # GitHub Secrets에서 환경 변수를 안전하게 주입받음
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python main.py
