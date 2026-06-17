@@ -1,0 +1,6 @@
+# .env.example
+# 본인의 NeonDB Connection String으로 변경하세요.
+DATABASE_URL="postgresql://[user]:[password]@[host].neon.tech/whale-brief-db?sslmode=require"
+
+# SEC API 통신을 위한 User-Agent (이름/회사명 및 이메일 필수)
+SEC_USER_AGENT="YourName team@yourdomain.com"
