@@ -41,22 +41,26 @@ By removing unnecessary HTML/XML structures and exposing normalized JSON schemas
 
 ## Project Structure
 
-```text
+```text    
 sec-edgar-collector/
-├── .env                  # Local environment variables (not committed)
-├── .env.example          # Environment variable template
 ├── .github/
-│   └── workflows/
-│       └── etl_pipeline.yml
-├── .gitignore
-├── requirements.txt
-├── main.py               # Pipeline orchestrator
+│     └── workflows/
+│          ├── etl_pipeline.yml         # (Daily) SEC/FINRA ingestion and AI analysis serverless scheduler
+│          └── backfill_pipeline.yml    # (Weekly) Yahoo Finance metadata auto-refresh worker
+├── src/
+│   ├── __init__.py
+│   ├── ai_analyzer.py               # Multilingual intelligence engine powered by Dual-LLM (Reasoning + Formatting)
+│   ├── collector.py                 # SEC EDGAR Form 4/F-3 raw XML regex parser (Extract)
+│   ├── db_manager.py                # NeonDB (PostgreSQL) integrity enforcement and bulk upsert module (Load)
+│   ├── finra_collector.py           # FINRA Reg SHO OTC/short sale high-volume batch downloader (Extract)
+│   └── metadata_backfiller.py       # Worker for backfilling missing corporate CIK/Sector metadata
+├── .env                             # Local environment variables (not committed)
+├── .env.example                     # Environment variables and multi-agent configuration specification for open-source contributors
+├── .gitignore                       # Isolation for AI Agent caches and local environment variables
+├── requirements.txt                 # Minimum dependency package specifications for running the pipeline
+├── main.py                          # Orchestrator governing the entire ETL & AI pipeline (Entry point)
 ├── README.md
-└── src/
-    ├── __init__.py
-    ├── ai_analyzer.py    # analyze logic with AI
-    ├── collector.py      # SEC collection & parsing logic
-    └── db_manager.py     # Database loading layer
+└── requirements.txt
 ```
 
 ## Quick Start
