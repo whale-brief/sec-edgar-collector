@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import re
 import logging
 from typing import List, Dict, Optional, Any
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
@@ -17,9 +18,11 @@ class SecEdgarCollector:
         }
         self.base_url = "https://www.sec.gov/cgi-bin/browse-edgar"
 
-    def fetch_latest_form4(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def fetch_latest_form4(self, limit: int = 50) -> List[Dict[str, Any]]:
         """최신 Form 4 공시 메타데이터를 수집하고 딥 파싱을 수행합니다."""
-        logging.info("Initiating SEC EDGAR Form 4 Feed Extraction...")
+        logging.info("Initiating SEC EDGAR Form 4 Feed Extraction (Production Mode)...")
+        
+        # 실제 최신 데이터를 가져오도록 파라미터 복구
         params = {"action": "getcurrent", "type": "4", "output": "atom"}
         
         try:
@@ -30,7 +33,10 @@ class SecEdgarCollector:
             logging.info(f"Found {len(basic_filings)} filings. Deep parsing top {limit} items...")
             
             deep_parsed_data = []
-            for filing in basic_filings[:limit]:
+            for filing in basic_filings:
+                # [핵심 방어 로직] SEC Rate Limit (초당 10회) 회피를 위한 지연
+                time.sleep(0.15)
+                
                 detail = self._fetch_and_parse_form4_xml(filing['link'])
                 if detail:
                     detail['raw_link'] = filing['link']

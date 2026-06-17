@@ -30,6 +30,7 @@ jobs:
 
       - name: 4. Execute ETL Pipeline (Extract -> Transform -> Load)
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           # GitHub Secrets에서 환경 변수를 안전하게 주입받음
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
