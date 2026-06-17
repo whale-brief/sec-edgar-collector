@@ -1,6 +1,26 @@
-# .env.example
-# 본인의 NeonDB Connection String으로 변경하세요.
+# ==========================================
+# Whale-Brief Database Configuration
+# ==========================================
+# NeonDB (PostgreSQL) 연결 주소 (필수)
 DATABASE_URL="postgresql://[user]:[password]@[host].neon.tech/whale-brief-db?sslmode=require"
 
-# SEC API 통신을 위한 User-Agent (이름/회사명 및 이메일 필수)
+# ==========================================
+# SEC API Configuration
+# ==========================================
+# SEC 통신을 위한 User-Agent (이름/회사명 및 이메일 필수)
 SEC_USER_AGENT="YourName team@yourdomain.com"
+
+# ==========================================
+# NVIDIA NIM AI Multi-Agent Configuration
+# ==========================================
+# NVIDIA API Key (필수)
+NVIDIA_API_KEY="nvapi-..."
+
+# [The Brain] 추론 전담 모델: 400B 파라미터로 SEC/FINRA 데이터 인과관계 분석 (비용 제로 최적화)
+AI_REASONING_MODEL="qwen3.5-397b-a17b"
+
+# [The Scribe - KO] 한국어 리포트 정제 모델: 빠른 생성 속도와 직설적 화법(디시인사이드 감성) 최적화
+AI_REPORT_MODEL_KO="deepseek-v4-flash"
+
+# [The Scribe - JA] 일본어 리포트 정제 모델: 일본 금융 리포트 특유의 격식 있는 한자어 생성 최적화
+AI_REPORT_MODEL_JA="qwen3.5-122b-a10b"
