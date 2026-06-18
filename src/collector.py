@@ -1,15 +1,16 @@
 import requests
 import xml.etree.ElementTree as ET
 import re
+import time
 import logging
 from typing import List, Dict, Optional, Any
-import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 class SecEdgarCollector:
     """
-    SEC EDGAR 시스템에서 실시간으로 데이터를 수집하고 파싱하는 코어 엔진 (Extract & Transform).
+    Core engine for fetching and parsing real-time data from the SEC EDGAR system.
+    Focuses on extracting actionable metrics from Form 4 (Insider Trading) filings.
     """
     def __init__(self, user_agent: str) -> None:
         self.headers = {
@@ -19,10 +20,11 @@ class SecEdgarCollector:
         self.base_url = "https://www.sec.gov/cgi-bin/browse-edgar"
 
     def fetch_latest_form4(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """최신 Form 4 공시 메타데이터를 수집하고 딥 파싱을 수행합니다."""
-        logging.info("Initiating SEC EDGAR Form 4 Feed Extraction (Production Mode)...")
-        
-        # 실제 최신 데이터를 가져오도록 파라미터 복구
+        """
+        Retrieves the latest Form 4 filing metadata and executes deep XML parsing.
+        Incorporates rate-limit backoff to prevent SEC IP bans.
+        """
+        logging.info("Initiating SEC EDGAR Form 4 Feed Extraction...")
         params = {"action": "getcurrent", "type": "4", "output": "atom"}
         
         try:
@@ -33,9 +35,9 @@ class SecEdgarCollector:
             logging.info(f"Found {len(basic_filings)} filings. Deep parsing top {limit} items...")
             
             deep_parsed_data = []
-            for filing in basic_filings:
-                # [핵심 방어 로직] SEC Rate Limit (초당 10회) 회피를 위한 지연
-                time.sleep(0.15)
+            for filing in basic_filings[:limit]:
+                # Defensive delay to respect SEC's 10 requests/sec limit
+                time.sleep(0.15) 
                 
                 detail = self._fetch_and_parse_form4_xml(filing['link'])
                 if detail:
@@ -51,6 +53,7 @@ class SecEdgarCollector:
             return []
 
     def _parse_atom_feed(self, xml_content: str) -> List[Dict[str, str]]:
+        """Extracts filing titles and raw document links from the SEC Atom feed."""
         try:
             root = ET.fromstring(xml_content)
             namespace = {'atom': 'http://www.w3.org/2005/Atom'}
@@ -73,24 +76,32 @@ class SecEdgarCollector:
             return []
 
     def _fetch_and_parse_form4_xml(self, index_link: str) -> Optional[Dict[str, Any]]:
+        """
+        Converts the index.htm link to the raw .txt URL and extracts
+        insider trading metrics via regex and XML parsing.
+        """
         raw_text_link = index_link.replace("-index.htm", ".txt")
         
         try:
             response = requests.get(raw_text_link, headers=self.headers, timeout=10)
             response.raise_for_status()
             
+            # Extract pure <XML> block to avoid parsing HTML wrapper
             xml_match = re.search(r'<XML>(.*?)</XML>', response.text, re.DOTALL)
             if not xml_match:
                 return None
                 
             xml_content = xml_match.group(1).strip()
+            # Remove namespaces (xmlns) to prevent ElementTree path resolution issues
             xml_content = re.sub(r'\sxmlns="[^"]+"', '', xml_content)
             
             root = ET.fromstring(xml_content)
             ticker = root.findtext(".//issuerTradingSymbol", default="UNKNOWN")
             
+            # Infer insider title/role
             title = root.findtext(".//officerTitle") or ("Director" if root.findtext(".//isDirector") in ["true", "1"] else "Insider")
             
+            # Extract first non-derivative transaction
             transaction = root.find(".//nonDerivativeTransaction")
             if transaction is None:
                 return None

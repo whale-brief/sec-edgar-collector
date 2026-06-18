@@ -10,19 +10,19 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
 
 class NeonDBManager:
     """
-    NeonDB(PostgreSQL)와의 연결 및 데이터 적재를 전담하는 클래스.
-    Idempotency(멱등성)를 보장하여 데이터 중복 적재를 방지합니다.
+    Database Access Object (DAO) that manages connection pooling and 
+    idempotent data ingestion into NeonDB (PostgreSQL).
     """
     def __init__(self) -> None:
         load_dotenv()
         self.db_url = os.getenv("DATABASE_URL")
         if not self.db_url:
-            raise ValueError("DATABASE_URL must be set in .env file")
+            raise ValueError("DATABASE_URL environment variable is missing.")
 
     def insert_sec_filings(self, parsed_data_list: List[Dict[str, Any]]) -> None:
-        """파싱된 공시 데이터를 NeonDB에 안전하게 병합(Upsert)합니다."""
+        """Inserts parsed SEC filings into the database using a Bulk Upsert strategy."""
         if not parsed_data_list:
-            logging.info("No new data to insert into the database.")
+            logging.info("No SEC data provided for insertion.")
             return
 
         insert_query = """
@@ -52,28 +52,26 @@ class NeonDBManager:
             conn = psycopg2.connect(self.db_url)
             cursor = conn.cursor()
 
-            # 외래키 무결성 제약조건 방어를 위한 사전 기업 데이터 삽입
+            # Prevent Foreign Key violations by pre-populating the companies table
             self._ensure_companies_exist(cursor, list(unique_tickers))
 
-            # Bulk Insert 실행
             execute_values(cursor, insert_query, values_to_insert)
             conn.commit()
             
             inserted_count = cursor.rowcount
-            logging.info(f"Database Load Complete: {len(parsed_data_list)} attempted -> {inserted_count} newly inserted.")
+            logging.info(f"SEC Database Load Complete: {len(parsed_data_list)} attempted -> {inserted_count} newly inserted.")
 
         except Exception as e:
-            logging.error(f"Critical error during database insertion: {e}")
-            if conn:
-                conn.rollback()
+            logging.error(f"Critical error during SEC database insertion: {e}")
+            if conn: conn.rollback()
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
 
     def insert_finra_darkpool(self, finra_data_list: List[Dict[str, Any]]) -> None:
-        """FINRA 다크풀 및 공매도 배치 데이터를 Bulk Upsert 방식으로 적재합니다."""
+        """Inserts bulk FINRA Reg SHO metrics into the database with Conflict handling."""
         if not finra_data_list:
-            logging.info("No FINRA data to insert.")
+            logging.info("No FINRA data provided for insertion.")
             return
 
         insert_query = """
@@ -102,26 +100,24 @@ class NeonDBManager:
             conn = psycopg2.connect(self.db_url)
             cursor = conn.cursor()
 
-            # [아키텍트의 무기] 8,000개의 듣보잡 티커가 들어와도 FK 에러가 나지 않도록 사전 적재
             self._ensure_companies_exist(cursor, list(unique_tickers))
 
-            # Bulk Insert (수천 건의 데이터를 단 한 번의 트랜잭션으로 처리)
+            # Handle massive batch inserts within a single database transaction
             execute_values(cursor, insert_query, values_to_insert)
             conn.commit()
             
             inserted_count = cursor.rowcount
-            logging.info(f"FINRA DB Load Complete: {len(finra_data_list)} attempted -> {inserted_count} newly inserted.")
+            logging.info(f"FINRA Database Load Complete: {len(finra_data_list)} attempted -> {inserted_count} newly inserted.")
 
         except Exception as e:
-            logging.error(f"Critical error during FINRA DB insertion: {e}")
-            if conn:
-                conn.rollback()
+            logging.error(f"Critical error during FINRA database insertion: {e}")
+            if conn: conn.rollback()
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
 
     def _ensure_companies_exist(self, cursor: Any, tickers: List[str]) -> None:
-        """외래키(FK) 에러 방지를 위해 수집된 Ticker를 메타 테이블에 선행 적재합니다."""
+        """Ensures all referenced tickers exist in the companies metadata table to safe-keep FK integrity."""
         if not tickers: return
         
         company_query = """
