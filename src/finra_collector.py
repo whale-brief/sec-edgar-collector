@@ -2,6 +2,7 @@ import requests
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from src.webhook_client import webhook_client
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
@@ -13,7 +14,7 @@ class FinraDarkpoolCollector:
     def __init__(self) -> None:
         self.base_url = "https://cdn.finra.org/equity/regsho/daily/"
 
-    def fetch_daily_data(self, target_date: str = None) -> List[Dict[str, Any]]:
+    def fetch_daily_data(self, target_date: str = None) -> None:
         """
         Retrieves FINRA data for a specific date (defaults to yesterday).
         Expected raw format: Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market
@@ -36,7 +37,6 @@ class FinraDarkpoolCollector:
                 return []
                 
             response.raise_for_status()
-            
             lines = response.text.strip().split('\n')
             parsed_data = []
             
@@ -64,8 +64,18 @@ class FinraDarkpoolCollector:
                     })
                     
             logging.info(f"FINRA Extraction Complete: {len(parsed_data)} tickers processed.")
-            return parsed_data
+            webhook_payload = {
+                "date": target_date,
+                "records": parsed_data
+            }
+            webhook_client.send("finra-batch", webhook_payload)
             
         except Exception as e:
             logging.error(f"Error fetching FINRA data: {e}")
-            return []
+
+if __name__ == "__main__":
+    logging.info("🚀 Starting FINRA Darkpool Batch Job...")
+
+    collector.fetch_and_send_daily_data()
+    
+    logging.info("✅ FINRA Darkpool Batch Job Finished.")

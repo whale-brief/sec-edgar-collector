@@ -26,30 +26,17 @@ We engineered this pipeline to operate at **\$0 infrastructure cost** by leverag
 
 ### System Flow Diagram
 ```text
-┌─────────────────┐       [Extract: Delta]        ┌──────────────────────┐
-│ SEC EDGAR (XML) ├──────────────────────────────►│ src/collector.py     │
-└─────────────────┘                               └──────────┬───────────┘
-                                                             │ (Transform)
-┌─────────────────┐       [Extract: Bulk]         ┌──────────▼───────────┐
-│ FINRA Reg SHO   ├──────────────────────────────►│ src/db_manager.py    │
-└─────────────────┘                               └──────────┬───────────┘
-                                                             │ (Load / Upsert)
-                                                  ┌──────────▼───────────┐
-                                                  │ NeonDB (PostgreSQL)  │
-                                                  └──────────┬───────────┘
-                                                             │ (Query Pending)
-┌────────────────────────────────────────────────────────────▼───────────┐
-│ src/ai_analyzer.py (Language-Aware Dual-LLM Engine)                    │
-│                                                                        │
-│  1. The Brain (Qwen 397B)    : "Analyze the correlation between SEC    │
-│                                insider trades & Darkpool short volume" │
-│  2. The Scribe KO (DeepSeek) : "Format as aggressive Korean JSON"      │
-│  3. The Scribe JA (Qwen 122B): "Format as formal Japanese JSON"        │
-└────────────────────────────────────────────────────────────┬───────────┘
-                                                             │ (Update)
-                                                  ┌──────────▼───────────┐
-                                                  │ Final Risk JSONs     │
-                                                  └──────────────────────┘
+┌─────────────────┐       [Extract: SEC]        ┌──────────────────────┐
+│ SEC EDGAR (XML) ├────────────────────────────►│ src/collector.py     │
+└─────────────────┘                             └──────────┬───────────┘
+                                                           │ (POST Webhook)
+┌─────────────────┐       [Extract: FINRA]      ┌──────────▼───────────┐
+│ FINRA Reg SHO   ├────────────────────────────►│ src/webhook_client.py│
+└─────────────────┘                             └──────────┬───────────┘
+                                                           │
+┌─────────────────┐       [Extract: News]       ┌──────────▲───────────┐
+│ StockTitan Live ├────────────────────────────►│ src/news_crawler.py  │
+└─────────────────┘                             └──────────────────────┘
 ```
 
 ### Installation & Setup
